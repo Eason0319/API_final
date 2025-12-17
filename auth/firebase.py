@@ -1,72 +1,78 @@
-# auth/firebase.py
 import os
+import json
 import firebase_admin
 from firebase_admin import credentials, auth
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Header, HTTPException, status
+from dotenv import load_dotenv
 
-# --- Firebase Admin SDK 初始化 ---
-
-# 1. 設定金鑰檔案的路徑 (我們直接指向根目錄的 serviceAccountKey.json)
-#    請確保你已經從 Firebase 下載了這個檔案
-SERVICE_ACCOUNT_KEY_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "serviceAccountKey.json")
+# 載入環境變數
+load_dotenv()
 
 def init_firebase():
-    """初始化 Firebase Admin SDK"""
-    print("--- 正在初始化 Firebase Admin SDK ---")
-    if not os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
-        print(f"警告：Firebase 憑證文件不存在於: {SERVICE_ACCOUNT_KEY_PATH}")
-        print("後端 Auth 功能將無法運作，請下載 serviceAccountKey.json")
+    """
+    初始化 Firebase Admin SDK。
+    支援從 Vercel 環境變數 (FIREBASE_CREDENTIALS) 或本地檔案 (serviceAccountKey.json) 讀取憑證。
+    """
+    # 1. 檢查是否已經初始化過 (避免重複初始化錯誤)
+    if firebase_admin._apps:
         return
 
-    try:
-        cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+    cred = None
+    
+    # 2. 優先嘗試從環境變數讀取 (適用於 Vercel)
+    firebase_creds_str = os.getenv("FIREBASE_CREDENTIALS")
+    
+    if firebase_creds_str:
+        try:
+            # 解析 JSON 字串
+            cred_dict = json.loads(firebase_creds_str)
+            cred = credentials.Certificate(cred_dict)
+            print("Firebase initialized using environment variable.")
+        except json.JSONDecodeError as e:
+            print(f"Error decoding FIREBASE_CREDENTIALS: {e}")
+            
+    # 3. 如果沒有環境變數，嘗試讀取本地檔案 (適用於本地開發)
+    elif os.path.exists("serviceAccountKey.json"):
+        cred = credentials.Certificate("serviceAccountKey.json")
+        print("Firebase initialized using local serviceAccountKey.json.")
+    
+    else:
+        print("Warning: No Firebase credentials found! Auth functions may fail.")
+
+    # 4. 執行初始化
+    if cred:
         firebase_admin.initialize_app(cred)
-        print("--- Firebase Admin SDK 初始化成功 ---")
-    except ValueError as e:
-        # 避免重複初始化
-        print(f"Firebase Admin SDK 已初始化或發生錯誤: {e}")
-    except Exception as e:
-        print(f"初始化 Firebase Admin SDK 時發生未知錯誤: {e}")
 
 
-# --- FastAPI 依賴項 (Dependency) ---
-
-security = HTTPBearer()
-
-def verify_firebase_token(id_token: str) -> dict:
+def require_firebase_token(authorization: str = Header(None)):
     """
-    驗證 Firebase ID Token 並返回解碼後的 token 資訊
+    FastAPI Dependency: 驗證 Request Header 中的 Firebase ID Token
     """
+    # 確保在使用驗證功能前，Firebase 已被初始化
+    # 如果您的 app.py 忘記呼叫 init_firebase()，這裡是一個最後的補救措施 (Optional)
+    if not firebase_admin._apps:
+        init_firebase()
+
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header is missing"
+        )
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication scheme. Expected 'Bearer <token>'"
+        )
+
+    token = authorization.split("Bearer ")[1]
+
     try:
-        decoded_token = auth.verify_id_token(id_token)
+        decoded_token = auth.verify_id_token(token)
         return decoded_token
     except Exception as e:
-        # 這裡的 print 僅用於伺服器端除錯
-        print(f"驗證 Token 失敗: {e}") 
-        raise ValueError(f"無效的 Firebase token: {e}")
-
-def require_firebase_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> dict:
-    """
-    一個 FastAPI 依賴項，用來從 Header 取得 Token 並進行驗證。
-    如果驗證成功，返回解碼後的 payload。
-    """
-    if not credentials:
+        print(f"Token verification failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="未提供身份驗證憑證",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        
-    token = credentials.credentials
-    try:
-        payload = verify_firebase_token(token)
-        return payload
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Invalid or expired token"
         )
