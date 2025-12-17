@@ -9,8 +9,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   
-  <script type="module" src="static/firebase-init.js"></script>
-  <script type="module" src="static/auth.js"></script>
+  <script type="module" src="firebase-init.js"></script>
+  <script type="module" src="auth.js"></script>
   
   <script>
     tailwind.config = {
@@ -82,7 +82,7 @@
     <header class="container mx-auto px-6 py-6 flex items-center justify-between z-10 flex-none">
       <div class="flex items-center space-x-4">
         <a href="index.html" class="w-16 h-16 md:w-20 md:h-20 bg-white rounded-full flex items-center justify-center shadow-lg overflow-hidden">
-          <img src="static/img/logo.jpg" alt="富邦悍將Logo" class="w-full h-full object-cover">
+          <img src="img/logo.jpg" alt="富邦悍將Logo" class="w-full h-full object-cover">
         </a>
         <h1 class="text-xl md:text-2xl font-black tracking-wide">富邦悍將球迷論壇</h1>
       </div>
@@ -127,7 +127,7 @@
             <div id="messages-list" class="flex-grow overflow-y-auto p-4 space-y-4 scrollbar-thin">
                 <div class="flex justify-start">
                     <div class="bg-blue-600/80 text-white p-3 md:p-4 rounded-2xl rounded-tl-none max-w-[85%] md:max-w-[70%] shadow-md border border-white/10 backdrop-blur-sm">
-                        <p class="font-bold mb-1">⚾ AI 分析師</p>
+                        <p class="font-bold mb-1">⚾ 悍將AI 分析師</p>
                         你好！我是富邦悍將 AI 分析師。<br>
                         你可以問我有關富邦悍將的問題，有甚麼想知道的嗎？
                     </div>
@@ -159,6 +159,6 @@
     </footer>
   </div>
 
-  <script type="module" src="static/chat.js"></script>
+  <script type="module" src="chat.js"></script>
 </body>
 </html>

@@ -11,32 +11,23 @@ const sendBtn = document.getElementById('send-btn');
 (async function init() {
     console.log("Chat: 正在等待 Firebase 初始化...");
     
-    // 1. 等待 auth.js 回傳登入狀態 (這是 blog.js 成功的關鍵)
+    // 1. 等待 auth.js 回傳登入狀態
     const user = await waitForAuthInit;
 
     // 2. 判斷使用者是否登入
     if (user) {
         console.log("Chat: 使用者已登入", user.email);
-        
-        // 已登入：隱藏遮罩 (使用 Tailwind 語法隱藏)
-        if (loginOverlay) {
-            loginOverlay.classList.add('hidden'); // 確保遮罩消失
-        }
-        
-        // 解鎖輸入框
+        if (loginOverlay) loginOverlay.classList.add('hidden');
         userInput.disabled = false;
         sendBtn.disabled = false;
         userInput.focus();
     } else {
         console.log("Chat: 使用者未登入，保持鎖定");
-        // 未登入：遮罩預設就是顯示的，不需要做動作，或者強制顯示
-        if (loginOverlay) {
-            loginOverlay.classList.remove('hidden');
-        }
+        if (loginOverlay) loginOverlay.classList.remove('hidden');
     }
 })();
 
-// --- 發送訊息邏輯 (保持不變) ---
+// --- 發送訊息邏輯 ---
 async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
@@ -51,7 +42,7 @@ async function sendMessage() {
     const loadingId = appendMessage('正在查詢資料庫...', 'ai', true);
 
     try {
-        // 取得 Token (後端驗證用)
+        // 取得 Token
         const token = await getCurrentIdToken();
         if (!token) throw new Error("無法取得登入憑證");
 
@@ -60,6 +51,7 @@ async function sendMessage() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        // 成功後移除讀取訊息，並顯示回答
         removeMessage(loadingId);
         appendMessage(res.data.reply, 'ai');
 
@@ -91,19 +83,28 @@ if (userInput) userInput.addEventListener('keypress', (e) => {
 function appendMessage(text, sender, isLoading = false) {
     const div = document.createElement('div');
     const isUser = sender === 'user';
-    const id = 'msg-' + Date.now();
+    
+    // 【關鍵修正】加入隨機字串，防止同一毫秒內的訊息 ID 重複
+    const id = 'msg-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     div.id = id;
+    
     div.className = `flex w-full ${isUser ? 'justify-end' : 'justify-start'}`;
-    const colorClass = isUser ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-700 text-gray-100 rounded-tl-none border border-slate-600';
+    
+    // 更新樣式以配合新的介面設計
+    // User: 黃色背景 (配合按鈕), AI: 藍色半透明 (配合 Header/Static Greeting)
+    const userStyle = 'bg-yellow-400 text-blue-900 rounded-tr-none shadow-lg font-medium';
+    const aiStyle = 'bg-blue-600/80 text-white rounded-tl-none border border-blue-500/30 backdrop-blur-sm';
+    
+    const colorClass = isUser ? userStyle : aiStyle;
     
     div.innerHTML = `
-        <div class="${colorClass} p-3 rounded-2xl max-w-[85%] shadow-md ${isLoading ? 'animate-pulse' : ''}">
+        <div class="${colorClass} p-3 md:p-4 rounded-2xl max-w-[85%] shadow-md ${isLoading ? 'animate-pulse' : ''}">
             ${text.replace(/\n/g, '<br>')}
         </div>
     `;
     messagesList.appendChild(div);
     messagesList.scrollTop = messagesList.scrollHeight;
-    return id;
+    return id; // 回傳這個唯一的 ID 供後續移除使用
 }
 
 function removeMessage(id) {
