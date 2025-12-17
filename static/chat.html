@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 小幫手 - 富邦悍將球迷論壇</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <script type="module" src="firebase-init.js"></script>
+
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+    }
+
+    /* 背景漸層動畫 */
+    .hero-gradient {
+      background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+      background-size: 400% 400%;
+      animation: gradientMove 12s ease infinite;
+    }
+
+    @keyframes gradientMove {
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+
+    /* 光暈文字效果 */
+    .glow-text {
+      text-shadow: 0 0 25px rgba(96, 165, 250, 0.7);
+    }
+
+    /* 卡片 hover 效果 */
+    .card-hover {
+      transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    }
+
+    .card-hover:hover {
+      transform: translateY(-6px) scale(1.03);
+      box-shadow: 0 20px 50px rgba(59, 130, 246, 0.3);
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* 背景紋理 */
+    .texture {
+      background-image: url('https://www.transparenttextures.com/patterns/football-noise.png');
+      background-repeat: repeat;
+      opacity: 0.2;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-white font-sans antialiased flex flex-col h-screen">
+
+    <header class="text-gray-400 bg-slate-900 body-font border-b border-slate-800 flex-none sticky top-0 z-50">
+        <div class="container mx-auto flex flex-wrap p-5 flex-col md:flex-row items-center">
+            <a href="index.html" class="flex title-font font-medium items-center text-white mb-4 md:mb-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-10 h-10 text-white p-2 bg-blue-600 rounded-full" viewBox="0 0 24 24">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                </svg>
+                <span class="ml-3 text-xl font-bold">富邦悍將球迷論壇</span>
+            </a>
+
+            <nav class="md:ml-auto flex flex-wrap items-center text-base justify-center">
+                <a href="index.html" class="mr-5 hover:text-white transition-colors">首頁</a>
+                <a href="blog.html" class="mr-5 hover:text-white transition-colors">文章列表</a>
+                <a href="chat.html" class="mr-5 text-blue-400 font-bold cursor-default">AI 小幫手</a>
+            </nav>
+
+            <div id="auth-button-container" class="inline-flex items-center border-0 py-1 px-3 focus:outline-none rounded text-base mt-4 md:mt-0">
+                <span class="text-sm text-gray-500">載入中...</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-5 py-6 flex flex-col h-[calc(100vh-80px)]">
+        
+        <div class="flex flex-col text-center w-full mb-4 flex-none">
+            <h1 class="sm:text-3xl text-2xl font-medium title-font mb-2 text-white">悍將 AI 分析師</h1>
+            <p class="lg:w-2/3 mx-auto leading-relaxed text-base text-slate-400">
+                想知道球員數據、比賽紀錄或球隊歷史嗎？(RAG Powered)
+            </p>
+        </div>
+
+        <div class="flex-grow bg-slate-800 rounded-xl border border-slate-700 flex flex-col overflow-hidden relative shadow-2xl">
+            
+            <div id="login-overlay" class="absolute inset-0 z-40 bg-slate-900/95 flex flex-col items-center justify-center backdrop-blur-sm transition-opacity duration-300">
+                <div class="text-center p-8 bg-slate-800 rounded-lg border border-slate-700 shadow-xl max-w-sm mx-auto">
+                    <div class="text-5xl mb-4">🔒</div>
+                    <h2 class="text-2xl font-bold text-yellow-400 mb-2">權限受限</h2>
+                    <p class="text-gray-300 mb-6">您需要登入才能使用 AI 分析師功能。</p>
+                    <a href="login.html" class="inline-block bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-full transition duration-300">
+                        前往登入
+                    </a>
+                </div>
+            </div>
+
+            <div id="messages-list" class="flex-grow overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
+                <div class="flex justify-start">
+                    <div class="bg-slate-700 text-gray-100 p-3 rounded-2xl rounded-tl-none max-w-[85%] md:max-w-[70%] shadow-md border border-slate-600">
+                        你好！我是富邦悍將 AI 分析師 <br>
+                        你可以問我有關富邦悍將的問題，有甚麼想知道的嗎？
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-800 border-t border-slate-700 flex-none">
+                <div class="flex gap-2 relative">
+                    <input type="text" id="user-input" disabled 
+                        class="w-full bg-slate-900 rounded-lg border border-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-base outline-none text-gray-100 py-3 px-4 leading-8 transition-colors duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed placeholder-slate-500" 
+                        placeholder="請輸入您的問題..." autocomplete="off">
+                    
+                    <button id="send-btn" disabled 
+                        class="flex-shrink-0 text-white bg-blue-600 border-0 py-2 px-6 focus:outline-none hover:bg-blue-500 rounded-lg text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-bold flex items-center justify-center min-w-[80px]">
+                        發送
+                    </button>
+                </div>
+                <div class="text-xs text-slate-500 mt-2 text-center">AI 回答可能會有誤差，請以官方資訊為準。</div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="chat.js"></script>
+</body>
+</html>
