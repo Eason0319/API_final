@@ -9,7 +9,7 @@ from langchain_core.runnables import RunnablePassthrough
 rag_chain = None
 
 # 沿用您的 Prompt
-RAG_SYSTEM_PROMPT = """你是一個非常了解富邦悍將棒球隊資訊的分析師，請只回答參考資料中有的答案，如果有不知道答案的問題請誠實回答"我只知道富邦悍將的相關訊息"。
+RAG_SYSTEM_PROMPT = """你是一個非常了解富邦悍將棒球隊資訊的分析師，請回答參考資料中有的答案，如果有參考資訊中沒有的資料且上網搜尋後無關富邦悍將請回答"我只知道富邦悍將的相關訊息"。
 【參考資訊】：
 {context}
 """
@@ -31,7 +31,7 @@ def init_rag_chain():
         vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings)
         
         # 2. 定義 Retriever
-        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 
         # 3. 定義 LLM 與 Prompt
         llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
