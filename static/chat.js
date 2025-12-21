@@ -39,7 +39,7 @@ async function sendMessage() {
     sendBtn.disabled = true;
 
     // 顯示 AI 思考中
-    const loadingId = appendMessage('正在查詢資料庫...', 'ai', true);
+    const loadingId = appendMessage('思考中...', 'ai', true);
 
     try {
         // 取得 Token
